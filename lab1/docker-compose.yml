@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_analytics
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: analytics_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./source_data:/var/lib/postgresql/data_files:ro
+      - ./scripts:/docker-entrypoint-initdb.d:ro
+      - ./schema.sql:/schema.sql:ro
+      - ./data_load.sql:/data_load.sql:ro
+      - postgres_storage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_storage:
