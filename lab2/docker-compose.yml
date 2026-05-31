@@ -1,0 +1,103 @@
+version: '3.8'
+
+networks:
+  analytics_net:
+    driver: bridge
+
+services:
+  postgres_db:
+    image: postgres:15
+    container_name: analytics_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: analytics_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./исходные данные:/data:ro
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_storage:/var/lib/postgresql/data
+    networks:
+      - analytics_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  clickhouse_db:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: analytics_clickhouse
+    environment:
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: admin123
+      CLICKHOUSE_DB: analytics_db
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_storage:/var/lib/clickhouse
+    networks:
+      - analytics_net
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --password admin123 --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  spark_master:
+    image: bitnami/spark:3.5
+    container_name: spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark_jobs:/opt/spark/jobs
+      - ./jars:/opt/spark/jars
+    networks:
+      - analytics_net
+
+  spark_worker:
+    image: bitnami/spark:3.5
+    container_name: spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark_master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    volumes:
+      - ./spark_jobs:/opt/spark/jobs
+      - ./jars:/opt/spark/jars
+    networks:
+      - analytics_net
+    depends_on:
+      - spark_master
+
+  jupyter_lab:
+    image: jupyter/pyspark-notebook:spark-3.5.0
+    container_name: analytics_jupyter
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./spark_jobs:/home/jovyan/work
+      - ./jars:/home/jovyan/jars
+    networks:
+      - analytics_net
+    depends_on:
+      - spark_master
+      - postgres_db
+      - clickhouse_db
+
+volumes:
+  postgres_storage:
+  clickhouse_storage:
