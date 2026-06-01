@@ -82,11 +82,17 @@ docker exec spark_master spark-submit \
 6 аналитических отчетов в ClickHouse:
 
 Отчет	                Описание
+
 top10_items_report	Топ-10 товаров
+
 top10_buyers_report	Топ-10 покупателей
+
 monthly_sales_analysis	Продажи по месяцам
+
 top5_outlets_report	Топ-5 магазинов
+
 top5_vendors_report	Топ-5 поставщиков
+
 item_quality_analysis	Качество товаров
 
 ---
@@ -130,6 +136,8 @@ docker-compose up producer
 Схема "Звезда" в PostgreSQL:
 
 Тип	Таблицы
+
 Измерения	dim_supplier, dim_product, dim_customer, dim_seller, dim_store, dim_date
+
 Факт	fact_sales
 
