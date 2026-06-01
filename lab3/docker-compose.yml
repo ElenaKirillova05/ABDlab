@@ -1,0 +1,119 @@
+version: '3.8'
+
+networks:
+  bigdata:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: flink_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: petshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bigdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d petshop"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: flink_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - bigdata
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: flink_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - bigdata
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: flink_kafka_init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: sh -c "kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --topic pet_shop_sales --partitions 1 --replication-factor 1"
+    networks:
+      - bigdata
+
+  flink-jobmanager:
+    image: flink:1.17-scala_2.12
+    container_name: flink_jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - ./flink_job:/flink_job
+    networks:
+      - bigdata
+
+  flink-taskmanager:
+    image: flink:1.17-scala_2.12
+    container_name: flink_taskmanager
+    command: taskmanager
+    depends_on:
+      - flink-jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - ./flink_job:/flink_job
+    networks:
+      - bigdata
+
+  producer:
+    build:
+      context: ./producer
+    container_name: flink_producer
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      KAFKA_TOPIC: pet_shop_sales
+      DATA_DIR: /data
+      DELAY_MS: "5"
+    volumes:
+      - ./исходные данные:/data:ro
+    networks:
+      - bigdata
+
+volumes:
+  postgres_data:
