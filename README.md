@@ -37,7 +37,9 @@ docker-compose up -d
 
 Таблицы измерений: ref_buyer, ref_agent, ref_item, ref_outlet, ref_calendar, ref_vendor
 
-Лабораторная работа №2 – ETL с использованием Apache Spark
+---
+
+## Лабораторная работа №2 – ETL с использованием Apache Spark
 Цель
 Реализовать ETL-пайплайн с помощью Spark: трансформация данных в модель "Звезда" в PostgreSQL и формирование отчетов в ClickHouse.
 
@@ -87,7 +89,9 @@ top5_outlets_report	Топ-5 магазинов
 top5_vendors_report	Топ-5 поставщиков
 item_quality_analysis	Качество товаров
 
-Лабораторная работа №3 – Streaming обработка с использованием Apache Flink
+---
+
+## Лабораторная работа №3 – Streaming обработка с использованием Apache Flink
 Цель
 Реализовать потоковую обработку данных с помощью Flink: чтение из Kafka топика, трансформация в модель "Звезда" и запись в PostgreSQL.
 
