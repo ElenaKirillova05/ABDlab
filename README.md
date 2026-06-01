@@ -59,8 +59,10 @@ lab2/
 └── INSTRUCTIONS.md
 
 Запуск
+```bash
 cd lab2
 docker-compose up -d
+```
 
 # ETL трансформация
 docker exec spark_master spark-submit \
@@ -115,11 +117,12 @@ lab3/
 └── README.md
 
 Запуск
+```bash
 cd lab3
 docker-compose up -d
 docker-compose up producer
 # Открыть http://localhost:8081 → Submit New Job → streaming_etl.py
-
+```
 Схема "Звезда" в PostgreSQL:
 
 Тип	Таблицы
